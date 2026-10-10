@@ -1,0 +1,1 @@
+# Midterm-Konsep-Kecerdasan-Artificial
