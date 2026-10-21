@@ -1,8 +1,6 @@
-# Tower of Hanoi: Perbandingan BFS, DFS, Greedy Best-First Search, dan A*
+# Weighted Tower of Hanoi: BFS, UCS, Greedy Best-First, dan A*
 
 Proyek Midterm mata kuliah **Konsep Kecerdasan Artificial**, Teknik Informatika ITS (2026).
-
-Repositori ini berisi implementasi Python untuk memecahkan permasalahan **Tower of Hanoi** dengan beberapa algoritma pencarian, lalu membandingkan solusi dan kinerjanya. Laporan lengkap (formulasi masalah, heuristik, tree pemilihan state, dan pembahasan) ada pada berkas `midterm_KKA.pdf`.
 
 **Anggota kelompok**
 
@@ -14,8 +12,6 @@ Repositori ini berisi implementasi Python untuk memecahkan permasalahan **Tower 
 | Tri Zuyyina Rohmah | 5025251043 |
 
 ---
-
-# Weighted Tower of Hanoi: BFS, UCS, Greedy Best-First, dan A*
 
 Aplikasi ini membandingkan empat algoritma pencarian pada masalah **Tower of Hanoi berbobot** dengan 3 sampai 5 tiang dan 3 sampai 7 cakram. Proyek ini dibuat untuk mata kuliah Konsep Kecerdasan Artificial (Teknik Informatika ITS). Tujuannya bukan sekadar menyelesaikan puzzle, tetapi memperlihatkan **mengapa tiap algoritma ada**: masing-masing menjawab pertanyaan yang berbeda tentang "solusi mana yang dianggap terbaik" dan "berapa banyak usaha pencarian yang rela dikeluarkan".
 
