@@ -1,24 +1,8 @@
-"""
-hanoi_common.py
-Modul pendukung untuk semua algoritma (bfs.py, dfs.py, astar.py, greedy.py).
-
-Isi:
-  - Definisi masalah Tower of Hanoi dengan k tiang dan n cakram
-  - Heuristik: jumlah cakram yang belum berada di tiang goal
-  - Input parameter (batas: 3-5 tiang, 1-7 cakram)
-  - Tampilan hasil dalam bentuk tabel (cakram = angka, makin besar angka makin besar cakram)
-
-Representasi state:
-  tuple dengan panjang n. state[i] = indeks tiang tempat cakram ke-i berada
-  (i = 0 -> cakram "1" paling kecil, i = n-1 -> cakram "n" paling besar).
-  Initial state : semua cakram di tiang A (indeks 0)
-  Goal state    : semua cakram di tiang terakhir (indeks k-1)
-"""
 import argparse
 import time
 
 MIN_PEGS, MAX_PEGS = 3, 5
-MIN_DISKS, MAX_DISKS = 1, 7
+MIN_DISKS, MAX_DISKS = 3, 7
 
 
 # --------------------------------------------------------------------------
@@ -51,11 +35,6 @@ def successors(state, k):
                 yield state[:disk] + (dst,) + state[disk + 1:]
 
 
-def misplaced_disks(state, k):
-    """Heuristik h(n): jumlah cakram yang belum berada di tiang goal (k-1)."""
-    return sum(1 for peg in state if peg != k - 1)
-
-
 # --------------------------------------------------------------------------
 # Versi berbobot (weighted): setiap langkah punya biaya
 # --------------------------------------------------------------------------
@@ -70,10 +49,11 @@ def disk_weight(disk):
 def move_cost(disk, src, dst):
     """Biaya memindahkan satu cakram dari tiang src ke dst.
 
-    Sekarang hanya bergantung pada bobot cakram. Kalau mau biaya bergantung
-    pada pasangan tiang (mis. A->C lebih mahal), tambahkan di sini.
+    biaya = bobot cakram x jarak perpindahan (selisih indeks tiang)
+    Tiang diasumsikan berjajar A, B, C, ... sehingga A->B berjarak 1,
+    A->C berjarak 2, A->D berjarak 3, dst.
     """
-    return disk_weight(disk)
+    return disk_weight(disk) * abs(dst - src)
 
 
 def successors_weighted(state, k):
@@ -101,13 +81,16 @@ def path_cost(path):
     return total
 
 
-def weighted_misplaced(state, k):
-    """Heuristik berbobot: jumlah bobot cakram yang belum di tiang goal.
+def weighted_distance(state, k):
+    """Heuristik berbobot: sum( bobot cakram x jarak tiangnya ke tiang goal ).
 
-    Admissible: tiap cakram yang belum di goal butuh minimal 1 langkah,
-    dan biaya langkah itu >= bobotnya.
+    Admissible: setiap cakram minimal harus menempuh jarak |peg - goal|, dan
+    biaya per tiang yang ditempuh minimal bobot cakram itu.
+    Consistent: satu langkah hanya menggeser satu cakram sejauh d tiang, sehingga
+    h turun paling banyak bobot x d = biaya langkah tersebut.
     """
-    return sum(disk_weight(d) for d, peg in enumerate(state) if peg != k - 1)
+    goal = k - 1
+    return sum(disk_weight(d) * (goal - peg) for d, peg in enumerate(state))
 
 
 def build_path(parent, state):

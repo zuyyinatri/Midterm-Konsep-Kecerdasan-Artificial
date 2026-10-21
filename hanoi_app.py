@@ -1,19 +1,3 @@
-"""
-hanoi_app.py - Aplikasi Tower of Hanoi (k tiang, n cakram) dengan 4 algoritma pencarian.
-
-Memakai file algoritma yang sudah ada (harus berada di folder yang sama):
-    bfs.py, dfs.py, astar.py, greedy.py, hanoi_common.py
-GUI memakai Tkinter (sudah bawaan Python, tidak perlu install apa pun).
-
-Jalankan:  python hanoi_app.py
-
-Fitur:
-  - Pilih jumlah tiang (3-5) dan cakram (1-7)
-  - Jalankan satu algoritma atau bandingkan keempatnya
-  - Animasi solusi (play / pause / step / lompat awal-akhir / atur kecepatan)
-  - Cakram digambar dengan angka = ukuran cakram (1 terkecil)
-  - Tabel perbandingan: langkah, optimal?, node expanded/generated, frontier, waktu
-"""
 import colorsys
 import queue
 import threading
@@ -23,7 +7,6 @@ from tkinter import messagebox, ttk
 
 from astar import astar
 from bfs import bfs
-from dfs import dfs
 from greedy import greedy
 from ucs import ucs
 from hanoi_common import (MAX_DISKS, MAX_PEGS, MIN_DISKS, MIN_PEGS, describe_move,
@@ -32,7 +15,6 @@ from hanoi_common import (MAX_DISKS, MAX_PEGS, MIN_DISKS, MIN_PEGS, describe_mov
 ALGORITHMS = {
     "UCS": ucs,
     "BFS": bfs,
-    "DFS": dfs,
     "A*": astar,
     "Greedy": greedy,
 }
@@ -48,13 +30,15 @@ def solve_one(name, n, k):
 class HanoiApp:
     def __init__(self, root):
         self.root = root
-        root.title("Tower of Hanoi - BFS / DFS / A* / Greedy")
+        root.title("Tower of Hanoi Berbobot - UCS / BFS / DFS / A* / Greedy")
         root.geometry("1120x780")
         root.minsize(900, 650)
 
         self.n, self.k = 4, 4
         self.results = {}          # nama algoritma -> (hasil, waktu)
         self.path = []             # jalur yang sedang ditampilkan
+        self.cum = [0]             # biaya kumulatif per langkah pada jalur
+        self.best_cost = None      # biaya optimal (dari UCS)
         self.idx = 0
         self.playing = False
         self.jobs = queue.Queue()
@@ -125,7 +109,7 @@ class HanoiApp:
         cols = ("algo", "moves", "cost", "optimal", "expanded", "generated", "frontier", "time")
         heads = ("Algoritma", "Langkah", "Total Biaya", "Optimal?", "Expanded", "Generated",
                  "Max Frontier", "Waktu (detik)")
-        self.tree = ttk.Treeview(main, columns=cols, show="headings", height=5)
+        self.tree = ttk.Treeview(main, columns=cols, show="headings", height=6)
         for c, h in zip(cols, heads):
             self.tree.heading(c, text=h)
             self.tree.column(c, width=95, anchor="center")
@@ -149,18 +133,30 @@ class HanoiApp:
         self.pause()
         self.n, self.k = n, k
         self.results.clear()
-        self.path, self.idx = [], 0
+        self.path, self.cum, self.idx = [], [0], 0
+        self.best_cost = None
         for item in self.tree.get_children():
             self.tree.delete(item)
         self.btn_solve.state(["disabled"])
         self.btn_all.state(["disabled"])
         self.lbl_info.config(text=f"{k} tiang, {n} cakram\nRuang state: {k ** n:,}\n"
-                                  "Biaya langkah = bobot cakram")
+                                  "Biaya langkah = bobot cakram x jarak tiang")
         self.lbl_status.config(text="Menghitung...")
         self.draw()
 
         def worker():
+            try:
+                # UCS dijalankan lebih dulu sebagai pembanding biaya optimal
+                ucs_res, ucs_time = solve_one("UCS", n, k)
+                self.jobs.put(("__best__", path_cost(ucs_res["path"]), 0.0))
+            except Exception as exc:           # pragma: no cover
+                self.jobs.put(("UCS", exc, 0.0))
+                self.jobs.put(None)
+                return
             for name in names:
+                if name == "UCS":
+                    self.jobs.put((name, ucs_res, ucs_time))
+                    continue
                 try:
                     self.jobs.put((name, *solve_one(name, n, k)))
                 except Exception as exc:       # pragma: no cover
@@ -180,6 +176,9 @@ class HanoiApp:
                     self.lbl_status.config(text="Selesai. Tekan ▶ untuk animasi.")
                     return
                 name, result, elapsed = job
+                if name == "__best__":
+                    self.best_cost = result
+                    continue
                 if isinstance(result, Exception):
                     messagebox.showerror("Error", f"{name}: {result}")
                     continue
@@ -192,9 +191,7 @@ class HanoiApp:
         self.results[name] = (result, elapsed)
         moves = len(result["path"]) - 1
         cost = path_cost(result["path"])
-        if "UCS" not in self.results:      # UCS = pembanding biaya optimal
-            self.results["UCS"] = (ucs(initial_state(self.n), goal_state(self.n, self.k), self.k), 0.0)
-        optimal = "ya" if cost == path_cost(self.results["UCS"][0]["path"]) else "tidak"
+        optimal = "ya" if cost == self.best_cost else "tidak"
         self.tree.insert("", "end", iid=name, values=(
             name, f"{moves:,}", f"{cost:,}", optimal, f"{result['expanded']:,}",
             f"{result['generated']:,}", f"{result['max_frontier']:,}", f"{elapsed:.4f}"))
@@ -206,8 +203,17 @@ class HanoiApp:
         if sel and sel[0] in self.results:
             self.pause()
             self.path = self.results[sel[0]][0]["path"]
+            self.cum = self._cumulative(self.path)
             self.idx = 0
             self.draw()
+
+    @staticmethod
+    def _cumulative(path):
+        """Biaya kumulatif di tiap state pada jalur (dihitung sekali per jalur)."""
+        cum = [0]
+        for i in range(1, len(path)):
+            cum.append(cum[-1] + path_cost(path[i - 1:i + 1]))
+        return cum
 
     # ------------------------------------------------------------ animation
     def pause(self):
@@ -291,9 +297,11 @@ class HanoiApp:
                 level += 1
 
         if self.path:
-            text = f"Langkah {self.idx:,} / {len(self.path) - 1:,}   |   Biaya {path_cost(self.path[:self.idx + 1]):,} / {path_cost(self.path):,}"
+            text = f"Langkah {self.idx:,} / {len(self.path) - 1:,}   |   Biaya {self.cum[self.idx]:,} / {self.cum[-1]:,}"
             if self.idx > 0:
+                step_cost = self.cum[self.idx] - self.cum[self.idx - 1]
                 text += "   |   " + describe_move(self.path[self.idx - 1], self.path[self.idx])
+                text += f"   (+{step_cost})"
         else:
             text = "Belum ada solusi"
         c.create_text(12, 10, anchor="nw", text=text, font=("Arial", 12))

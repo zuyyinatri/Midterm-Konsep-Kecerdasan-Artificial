@@ -1,14 +1,7 @@
-"""
-ucs.py - Uniform-Cost Search untuk Tower of Hanoi berbobot.
-
-Pengganti BFS saat biaya langkah tidak seragam: node dengan g(n) terkecil
-dieksplorasi lebih dulu, jadi solusi pertama yang ditemukan = biaya minimum.
-"""
 import heapq
 import itertools
 
 from hanoi_common import build_path, successors_weighted
-
 
 def ucs(start, goal, k):
     stats = {"expanded": 0, "generated": 0, "max_frontier": 0}

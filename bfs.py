@@ -1,13 +1,3 @@
-"""
-bfs.py - Breadth-First Search untuk Tower of Hanoi (k tiang, n cakram)
-
-Frontier: antrian FIFO. Node dieksplorasi level demi level sehingga solusi
-pertama yang ditemukan adalah solusi dengan jumlah langkah paling sedikit
-(optimal, karena setiap langkah berbiaya sama).
-
-Jalankan:  python bfs.py            (input diketik)
-           python bfs.py -k 4 -n 5
-"""
 from collections import deque
 
 from hanoi_common import build_path, run, successors

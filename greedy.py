@@ -1,17 +1,7 @@
-"""
-greedy.py - Greedy Best-First Search untuk Tower of Hanoi (k tiang, n cakram)
-
-Hanya memakai heuristik: f(n) = h(n) = jumlah cakram yang belum berada di tiang goal.
-Node dengan h terkecil selalu dieksplorasi lebih dulu (tanpa memperhitungkan g).
-Biasanya cepat, tetapi solusi TIDAK dijamin optimal.
-
-Jalankan:  python greedy.py            (input diketik)
-           python greedy.py -k 4 -n 5
-"""
 import heapq
 import itertools
 
-from hanoi_common import build_path, run, successors, weighted_misplaced
+from hanoi_common import build_path, run, successors, weighted_distance
 
 
 def greedy(start, goal, k):
@@ -19,7 +9,7 @@ def greedy(start, goal, k):
     counter = itertools.count()     # penentu urutan bila h sama (FIFO)
 
     parent = {start: None}          # sekaligus berfungsi sebagai visited set
-    frontier = [(weighted_misplaced(start, k), next(counter), start)]
+    frontier = [(weighted_distance(start, k), next(counter), start)]
 
     while frontier:
         _, _, state = heapq.heappop(frontier)
@@ -32,7 +22,7 @@ def greedy(start, goal, k):
             stats["generated"] += 1
             if nxt not in parent:
                 parent[nxt] = state
-                heapq.heappush(frontier, (weighted_misplaced(nxt, k), next(counter), nxt))
+                heapq.heappush(frontier, (weighted_distance(nxt, k), next(counter), nxt))
 
         stats["max_frontier"] = max(stats["max_frontier"], len(frontier))
 
@@ -40,4 +30,4 @@ def greedy(start, goal, k):
 
 
 if __name__ == "__main__":
-    run("Greedy Best-First (h = cakram belum di goal)", greedy, "Tower of Hanoi - Greedy Best-First Search")
+    run("Greedy Best-First (h = bobot x jarak ke goal)", greedy, "Tower of Hanoi - Greedy Best-First Search")
