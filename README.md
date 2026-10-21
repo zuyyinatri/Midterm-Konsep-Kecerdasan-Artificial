@@ -15,170 +15,103 @@ Repositori ini berisi implementasi Python untuk memecahkan permasalahan **Tower 
 
 ---
 
-## Fitur
+# Weighted Tower of Hanoi: BFS, UCS, Greedy Best-First, dan A*
 
-- Empat algoritma pencarian: **BFS, DFS, Greedy Best-First Search, A\***.
-- Jumlah tiang **3 sampai 5** dan jumlah cakram **1 sampai 7** dapat diatur.
-- Mode **command line**: tabel teks tiap langkah solusi dan ringkasan metrik.
-- Mode **GUI (Tkinter)**: animasi solusi (play, pause, step, lompat awal/akhir, atur kecepatan) dan tabel perbandingan keempat algoritma.
-- Pemeriksaan optimalitas terhadap jumlah langkah referensi **Frame-Stewart** (untuk 3 tiang sama dengan 2^n − 1).
-- Tanpa pustaka eksternal. Hanya Python 3 dan pustaka standar.
+Aplikasi ini membandingkan empat algoritma pencarian pada masalah **Tower of Hanoi berbobot** dengan 3 sampai 5 tiang dan 3 sampai 7 cakram. Proyek ini dibuat untuk mata kuliah Konsep Kecerdasan Artificial (Teknik Informatika ITS). Tujuannya bukan sekadar menyelesaikan puzzle, tetapi memperlihatkan **mengapa tiap algoritma ada**: masing-masing menjawab pertanyaan yang berbeda tentang "solusi mana yang dianggap terbaik" dan "berapa banyak usaha pencarian yang rela dikeluarkan".
 
-## Struktur Folder
+## Masalah yang dipecahkan
+
+Cakram dengan ukuran berbeda berada di beberapa tiang. Tujuannya memindahkan semua cakram dari tiang A ke tiang terakhir. Aturannya: satu cakram teratas per langkah, dan cakram besar tidak boleh di atas cakram yang lebih kecil.
+
+Versi ini diberi **biaya berbobot**, meniru rumus usaha `W = F x s`:
 
 ```
-midterm_kka/
-├── hanoi_common.py   # definisi masalah, heuristik, input parameter, tampilan tabel
-├── bfs.py            # Breadth-First Search
-├── dfs.py            # Depth-First Search
-├── greedy.py         # Greedy Best-First Search
-├── astar.py          # A* Search
-└── hanoi_app.py      # aplikasi GUI (Tkinter)
+biaya langkah = ukuran cakram x jarak antar tiang
 ```
 
-## Prasyarat
+Memindahkan cakram 5 dari A ke D berbiaya 5 x 3 = 15, sedangkan cakram 1 dari A ke B berbiaya 1 x 1 = 1. Karena biaya tidak seragam, **solusi dengan langkah paling sedikit belum tentu solusi termurah**. Inilah yang membuat keempat algoritma menjadi berbeda satu sama lain.
 
-- Python 3.8 atau lebih baru (diuji pada Python 3.12).
-- Untuk GUI: Tkinter. Biasanya sudah bawaan Python di Windows dan macOS. Pada Linux (Debian/Ubuntu) pasang dengan:
+## Untuk apa tiap algoritma ada
 
-  ```bash
-  sudo apt install python3-tk
-  ```
+| Algoritma | Berkas | Pertanyaan yang dijawab | Kelebihan | Kekurangan |
+|---|---|---|---|---|
+| **BFS** | `bfs.py` | Berapa jumlah langkah paling sedikit? | Menjamin langkah minimum; sederhana | Mengabaikan biaya, sehingga bisa mahal |
+| **UCS** | `ucs.py` | Berapa biaya total paling murah? | Menjamin biaya minimum; dipakai sebagai pembanding "optimal" | Menjelajah banyak state karena tidak punya arah |
+| **Greedy Best-First** | `greedy.py` | Mana state yang tampak paling dekat tujuan sekarang? | Cepat dan hemat ekspansi | Tidak menjamin optimal; bisa sangat mahal |
+| **A\*** | `astar.py` | Bagaimana mendapat biaya minimum tanpa menjelajah semuanya? | Optimal dan jauh lebih hemat ekspansi daripada UCS | Butuh heuristik yang baik; frontier bisa besar |
 
-## Cara Menjalankan
+Cara masing-masing memilih state berikutnya dari frontier:
 
-Masuk ke folder kode terlebih dahulu. Semua berkas harus berada dalam satu folder yang sama.
+- **BFS:** urutan masuk antrean (FIFO), tanpa melihat biaya.
+- **UCS:** `g(n)` terkecil, yaitu biaya yang sudah dikeluarkan dari state awal.
+- **Greedy:** `h(n)` terkecil, yaitu perkiraan sisa biaya ke tujuan.
+- **A\*:** `f(n) = g(n) + h(n)` terkecil, yaitu gabungan biaya yang sudah dikeluarkan dan perkiraan sisanya.
 
-```bash
-cd midterm_kka
+### Heuristik
+
+```
+h(n) = jumlah dari (ukuran cakram x jarak tiangnya ke tiang tujuan), untuk semua cakram
 ```
 
-### 1. Mode command line
+Heuristik ini **admissible** (tidak pernah melebihi biaya sebenarnya, karena tiap cakram minimal harus menempuh jarak itu) dan **consistent** (satu langkah menurunkan `h` paling banyak sebesar biaya langkah itu). Karena itu A\* menjamin solusi optimal. Heuristik ini belum memperhitungkan bahwa cakram kecil harus menyingkir lebih dulu, sehingga masih lemah.
 
-Tiap algoritma dijalankan sebagai skrip tersendiri:
+## Contoh hasil (4 tiang, 5 cakram)
 
-```bash
-python bfs.py
-python dfs.py
-python greedy.py
-python astar.py
-```
+| Algoritma | Langkah | Biaya | Optimal? | Diekspansi | Dibangkitkan | Frontier maks. |
+|---|---|---|---|---|---|---|
+| BFS | 13 | 67 | Tidak | 983 | 5745 | 283 |
+| UCS | 13 | 55 | Ya | 1023 | 5949 | 249 |
+| Greedy | 58 | 173 | Tidak | 389 | 2257 | 242 |
+| A\* | 15 | 55 | Ya | 364 | 2114 | 413 |
 
-Jika tanpa argumen, program meminta jumlah tiang dan cakram lewat input. Parameter juga dapat diberikan langsung:
+Yang bisa dipelajari dari tabel ini:
 
-```bash
-python astar.py -k 3 -n 5
-```
+- BFS menemukan 13 langkah, tetapi biayanya 67, lebih mahal daripada UCS yang juga 13 langkah dengan biaya 55.
+- Greedy cepat mencapai tujuan menurut jumlah ekspansi, tetapi solusinya 58 langkah dan berbiaya 173.
+- A\* mendapat biaya optimal yang sama dengan UCS dengan ekspansi sekitar 64% lebih sedikit.
+- Angka frontier dihitung sebagai panjang antrean prioritas, termasuk entri usang pada UCS dan A\*.
 
-| Argumen | Keterangan | Nilai |
-|---|---|---|
-| `-k`, `--pegs` | jumlah tiang | 3 sampai 5 |
-| `-n`, `--disks` | jumlah cakram | 1 sampai 7 |
-| `--steps` | tampilan tabel tiap langkah | `auto` (default, tampil jika solusi ≤ 60 langkah), `all`, `none` |
+Jumlah langkah bergantung pada pasangan tiang dan cakram. Contohnya 3 tiang dengan 3 cakram selalu 7 langkah.
 
-Contoh untuk instans pada laporan (5 cakram, 3 tiang), tanpa mencetak tabel tiap langkah:
+## Struktur berkas
 
-```bash
-python astar.py -k 3 -n 5 --steps none
-```
+| Berkas | Isi |
+|---|---|
+| `hanoi_common.py` | Definisi masalah, biaya langkah, heuristik, input parameter, dan tampilan tabel |
+| `bfs.py` | Breadth-First Search (uji tujuan saat state dibangkitkan) |
+| `ucs.py` | Uniform-Cost Search |
+| `greedy.py` | Greedy Best-First Search |
+| `astar.py` | A\* Search |
+| `hanoi_app.py` | Aplikasi GUI (Tkinter) dengan animasi solusi dan tabel perbandingan |
 
-### 2. Mode GUI
+Representasi state: tuple dengan panjang `n`, dengan `state[i]` berisi indeks tiang tempat cakram ke-`i` berada. State awal berisi semua cakram di tiang A, dan state tujuan berisi semua cakram di tiang terakhir.
+
+## Cara menjalankan
+
+Tidak perlu menginstal apa pun. Cukup Python 3 (Tkinter sudah bawaan Python), dan semua berkas harus berada di folder yang sama.
+
+**Aplikasi GUI:**
 
 ```bash
 python hanoi_app.py
 ```
 
-1. Pilih jumlah tiang dan cakram.
-2. Pilih algoritma, lalu klik **Solve (algoritma terpilih)**, atau klik **Bandingkan semua algoritma**.
-3. Gunakan tombol animasi (⏮ ◀ ▶ ▶| ⏭) dan slider kecepatan.
-4. Klik salah satu baris pada tabel perbandingan untuk memutar solusi algoritma tersebut.
+Pilih jumlah tiang dan cakram (default 4 tiang, 5 cakram), lalu klik **Solve** untuk satu algoritma atau **Bandingkan semua algoritma**. Klik baris pada tabel untuk memutar animasi solusi algoritma tersebut. Tombol animasi tersedia untuk play, pause, langkah mundur dan maju, serta lompat ke awal atau akhir, dengan kecepatan yang bisa diatur.
 
-## Formulasi Masalah
+**Baris perintah (satu algoritma):**
 
-Sesuai Bab 2 laporan, dengan satu perbedaan representasi pada kode (lihat di bawah):
+```bash
+python bfs.py    -k 4 -n 5
+python ucs.py    -k 4 -n 5
+python greedy.py -k 4 -n 5
+python astar.py  -k 4 -n 5
+```
 
-| Komponen | Definisi |
-|---|---|
-| State | Penempatan semua cakram pada tiang. Cakram 1 adalah yang terkecil. |
-| State awal | Semua cakram di tiang A. |
-| Uji tujuan | Semua cakram di tiang terakhir (C untuk 3 tiang). |
-| Aksi | Pindahkan cakram teratas suatu tiang ke tiang lain yang kosong atau yang puncaknya lebih besar. |
-| Biaya | 1 per langkah, sehingga g(n) adalah jumlah langkah dari state awal. |
-| Ruang state | k^n state (243 untuk 3 tiang dan 5 cakram). |
-
-**Representasi di kode.** State disimpan sebagai tuple panjang `n`, di mana `state[i]` adalah indeks tiang tempat cakram ke-`i` berada. Contohnya, `(0, 0, 0, 0, 0)` adalah state awal dan `(2, 2, 2, 2, 2)` adalah state tujuan pada 3 tiang.
-
-## Heuristik
-
-Greedy dan A\* memakai heuristik **h1**: jumlah cakram yang belum berada di tiang tujuan.
-
-- **Admissible**: setiap cakram yang salah tempat butuh minimal satu pemindahan.
-- **Consistent**: satu langkah hanya mengubah posisi satu cakram.
-
-## Algoritma
-
-| Algoritma | File | Struktur frontier | Kunci prioritas | Optimal? |
-|---|---|---|---|---|
-| BFS | `bfs.py` | antrean FIFO | kedalaman | Ya (biaya seragam) |
-| DFS | `dfs.py` | stack LIFO | urutan terakhir masuk | Tidak |
-| Greedy | `greedy.py` | priority queue | h(n) | Tidak |
-| A\* | `astar.py` | priority queue | f(n) = g(n) + h(n), seri dipecah dengan g terbesar | Ya (h admissible) |
-
-Seluruh algoritma memakai graph search dengan *visited set* agar tidak berputar pada siklus.
-
-## Metrik Keluaran
-
-Setiap run mencetak ringkasan berikut:
-
-- Jumlah langkah dan status optimal terhadap Frame-Stewart.
-- Node di-expand dan di-generate.
-- Ukuran frontier maksimum (pendekatan kebutuhan memori).
-- Waktu eksekusi (detik, bersifat relatif terhadap perangkat keras).
-
-## Contoh Hasil (3 tiang, 5 cakram)
-
-Hasil menjalankan kode pada repositori ini (`python <algoritma>.py -k 3 -n 5 --steps none`):
-
-| Algoritma | Langkah | Optimal? | Expanded | Generated | Frontier maks. |
-|---|---|---|---|---|---|
-| BFS | 31 | Ya | 206 | 616 | 26 |
-| DFS | 81 | Tidak | 82 | 242 | 42 |
-| Greedy (h1) | 35 | Tidak | 167 | 500 | 14 |
-| A\* (h1) | 31 | Ya | 184 | 551 | 16 |
-
-Pola utama yang konsisten dengan laporan:
-
-- BFS dan A\* menemukan solusi optimal 31 langkah, sedangkan A\* memakai frontier lebih kecil daripada BFS.
-- Greedy dengan h1 menghasilkan solusi 35 langkah (tidak optimal).
-- DFS menemukan solusi dengan cepat tetapi jalurnya jauh lebih panjang dari optimum.
-
-### Catatan perbedaan dengan angka di laporan
-
-Angka *expanded*, *generated*, dan *frontier* pada tabel di atas **tidak sama persis** dengan Tabel 3.1 pada laporan (misalnya BFS 233/243/32 pada laporan). Penyebabnya adalah perbedaan implementasi, bukan kesalahan:
-
-- Pada kode ini, *generated* dihitung dari setiap suksesor yang dihasilkan, termasuk yang sudah pernah dikunjungi. Pada laporan, *generated* adalah node yang benar-benar masuk frontier.
-- BFS pada kode melakukan uji tujuan saat node dibangkitkan (*generate*), sedangkan algoritma pada laporan menguji saat node diambil dari frontier.
-- Pemutus seri A\* pada kode memilih g terbesar, sedangkan laporan memilih h terkecil.
-
-Panjang solusi dan sifat optimalnya tetap sama.
-
-Hal berikut dibahas di laporan tetapi **tidak ada** di kode pada repositori ini:
-
-- UCS (pada biaya seragam urutannya identik dengan BFS).
-- Heuristik h2 (berbasis cakram terbesar yang belum di tiang tujuan).
-- Visualisasi tree pemilihan state dan skrip pengukuran waktu rata-rata 200 kali eksekusi.
+Opsi `--steps all|auto|none` mengatur apakah tabel tiap langkah ditampilkan. Mode `auto` menampilkannya jika solusi tidak lebih dari 60 langkah. Jika `-k` dan `-n` tidak diberikan, program akan menanyakannya.
 
 ## Batasan
 
-- Biaya setiap langkah adalah 1.
-- State awal selalu semua cakram di tiang A, dan tujuan selalu di tiang terakhir.
-- Waktu eksekusi hanya perbandingan relatif. Hasilnya bergantung pada perangkat keras.
-- Pada 5 tiang dengan banyak cakram, Frame-Stewart hanya referensi pembanding. Algoritma pencarian tetap menghitung solusinya sendiri.
-
-## Referensi
-
-1. S. Russell dan P. Norvig, *Artificial Intelligence: A Modern Approach*, 4th ed. Pearson, 2020.
-2. P. E. Hart, N. J. Nilsson, dan B. Raphael, "A formal basis for the heuristic determination of minimum cost paths," *IEEE Trans. Systems Science and Cybernetics*, vol. 4, no. 2, 1968.
-3. E. W. Dijkstra, "A note on two problems in connexion with graphs," *Numerische Mathematik*, vol. 1, 1959.
-4. J. Pearl, *Heuristics: Intelligent Search Strategies for Computer Problem Solving*. Addison-Wesley, 1984.
-5. A. M. Hinz, "The Tower of Hanoi," *L'Enseignement Mathématique*, vol. 35, 1989.
+- Jumlah tiang 3 sampai 5 dan cakram 3 sampai 7.
+- Bobot cakram sama dengan ukurannya (`disk_weight` di `hanoi_common.py` bisa diubah).
+- Waktu eksekusi bergantung pada perangkat dan hanya cocok untuk perbandingan relatif.
+- Hasil di atas berlaku untuk urutan pembangkitan aksi dan aturan pemutus seri yang dipakai di kode; sifat optimalitas tiap algoritma tidak berubah jika keduanya diganti, tetapi jumlah ekspansi bisa bergeser.
